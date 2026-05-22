@@ -16,7 +16,7 @@ ABA         = 'TICKETS'
 DIAS_ATRASO = 7
 MOTIVO_PRIO = 'prorrogação de boleto'
  
-st.set_page_config(page_title='Simplifique Representações', page_icon='📋',
+st.set_page_config(page_title='Simplifique Representações - Pós-vendas Supley', page_icon='📋',
                    layout='wide', initial_sidebar_state='expanded')
  
 st.markdown("""
