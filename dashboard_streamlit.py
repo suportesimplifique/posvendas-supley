@@ -20,15 +20,14 @@ MOTIVO_PRIO = 'prorrogação de boleto'
 # ─── USUÁRIOS E SENHAS ────────────────────────────────────────────────────────
 # perfil: 'admin' vê tudo | 'rep' vê só os próprios tickets
 USUARIOS = {
-    'admin':    {'senha': 'simpl@2026',      'perfil': 'admin',  'rep': None},
+    'admin':    {'senha': 'Simpl#2026!',       'perfil': 'admin', 'rep': None},
     'juliana':  {'senha': 'juliana@2026',    'perfil': 'admin',  'rep': None},
-    'vinicius': {'senha': 'vinicius@2026',   'perfil': 'rep',    'rep': 'VINICIUS VARRICHIO'},
-    'thiago':   {'senha': 'thiago@2026',     'perfil': 'rep',    'rep': 'THIAGO DUROES'},
-    'geane':    {'senha': 'geane@2026',      'perfil': 'rep',    'rep': 'GEANE SILVA'},
-    'anderson': {'senha': 'anderson@2026',   'perfil': 'rep',    'rep': 'ANDERSON COSTA'},
-    'fernando': {'senha': 'fernando@2026',   'perfil': 'rep',    'rep': 'FERNANDO AZEVEDO'},
-    'antonio':  {'senha': 'antonio@2026',    'perfil': 'rep',    'rep': 'ANTONIO FERREIRA'},
-    'heygla':   {'senha': 'heygla@2026',     'perfil': 'rep',    'rep': 'HEYGLA SILVA'},
+    'Vinicius_Varrichio': {'senha': 'Vn#8xK2$mQ',   'perfil': 'rep',    'rep': 'VINICIUS VARRICHIO'},
+    'Thiago_Duroes':   {'senha': 'Th@5wL9#pR',     'perfil': 'rep',    'rep': 'THIAGO DUROES'},
+    'Anderson_Costa': {'senha': 'An@6kM2#qZ',   'perfil': 'rep',    'rep': 'ANDERSON COSTA'},
+    'Fernando_Azevedo': {'senha': 'Fe#9rT4$wP',   'perfil': 'rep',    'rep': 'FERNANDO AZEVEDO'},
+    'Antonio_Sidney':  {'senha': 'At$7yH3!nL',    'perfil': 'rep',    'rep': 'ANTONIO FERREIRA'},
+    'Heygla_Silva':   {'senha': 'Hg@2xQ8#kV',     'perfil': 'rep',    'rep': 'HEYGLA SILVA'},
 }
 
 st.set_page_config(page_title='Simplifique Representações', page_icon='📋',
