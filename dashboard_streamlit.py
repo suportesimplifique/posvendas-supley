@@ -22,12 +22,12 @@ MOTIVO_PRIO = 'prorrogação de boleto'
 USUARIOS = {
     'admin':    {'senha': 'Simpl#2026!',       'perfil': 'admin', 'rep': None},
     'juliana':  {'senha': 'juliana@2026',    'perfil': 'admin',  'rep': None},
-    'Vinicius_Varrichio': {'senha': 'Vn#8xK2$mQ',   'perfil': 'rep',    'rep': 'VINICIUS VARRICHIO'},
-    'Thiago_Duroes':   {'senha': 'Th@5wL9#pR',     'perfil': 'rep',    'rep': 'THIAGO DUROES'},
-    'Anderson_Costa': {'senha': 'An@6kM2#qZ',   'perfil': 'rep',    'rep': 'ANDERSON COSTA'},
-    'Fernando_Azevedo': {'senha': 'Fe#9rT4$wP',   'perfil': 'rep',    'rep': 'FERNANDO AZEVEDO'},
-    'Antonio_Sidney':  {'senha': 'At$7yH3!nL',    'perfil': 'rep',    'rep': 'ANTONIO FERREIRA'},
-    'Heygla_Silva':   {'senha': 'Hg@2xQ8#kV',     'perfil': 'rep',    'rep': 'HEYGLA SILVA'},
+    'vinicius_varrichio': {'senha': 'Vn#8xK2$mQ',   'perfil': 'rep',    'rep': 'VINICIUS VARRICHIO'},
+    'thiago_duroes':   {'senha': 'Th@5wL9#pR',     'perfil': 'rep',    'rep': 'THIAGO DUROES'},
+    'anderson_costa': {'senha': 'An@6kM2#qZ',   'perfil': 'rep',    'rep': 'ANDERSON COSTA'},
+    'fernando_azevedo': {'senha': 'Fe#9rT4$wP',   'perfil': 'rep',    'rep': 'FERNANDO AZEVEDO'},
+    'antonio_sidney':  {'senha': 'At$7yH3!nL',    'perfil': 'rep',    'rep': 'ANTONIO FERREIRA'},
+    'heygla_silva':   {'senha': 'Hg@2xQ8#kV',     'perfil': 'rep',    'rep': 'HEYGLA SILVA'},
 }
 
 st.set_page_config(page_title='Simplifique Representações', page_icon='📋',
