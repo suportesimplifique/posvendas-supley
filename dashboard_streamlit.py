@@ -1,24 +1,39 @@
+# -*- coding: utf-8 -*-
 """
 Dashboard Simplifique Representações — Streamlit v5
 Para rodar: streamlit run dashboard_streamlit.py
 """
- 
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import requests
 import io
 from datetime import datetime, date
- 
+
 PLANILHA_ID = '1zRgd4x0Th67MYywSVWrE4W8R_3dK1Y7k4em_8YxrBMo'
-API_KEY     = 'AIzaSyCqzYuOcyo699_il95ooEqXTtpGxpqiGPI'
+API_KEY     = st.secrets["GOOGLE_API_KEY"]
 ABA         = 'TICKETS'
 DIAS_ATRASO = 7
 MOTIVO_PRIO = 'prorrogação de boleto'
- 
-st.set_page_config(page_title='Simplifique Representações - Pós-vendas Supley', page_icon='📋',
+
+# ─── USUÁRIOS E SENHAS ────────────────────────────────────────────────────────
+# perfil: 'admin' vê tudo | 'rep' vê só os próprios tickets
+USUARIOS = {
+    'admin':    {'senha': 'simpl@2026',      'perfil': 'admin',  'rep': None},
+    'juliana':  {'senha': 'juliana@2026',    'perfil': 'admin',  'rep': None},
+    'vinicius': {'senha': 'vinicius@2026',   'perfil': 'rep',    'rep': 'VINICIUS VARRICHIO'},
+    'thiago':   {'senha': 'thiago@2026',     'perfil': 'rep',    'rep': 'THIAGO DUROES'},
+    'geane':    {'senha': 'geane@2026',      'perfil': 'rep',    'rep': 'GEANE SILVA'},
+    'anderson': {'senha': 'anderson@2026',   'perfil': 'rep',    'rep': 'ANDERSON COSTA'},
+    'fernando': {'senha': 'fernando@2026',   'perfil': 'rep',    'rep': 'FERNANDO AZEVEDO'},
+    'antonio':  {'senha': 'antonio@2026',    'perfil': 'rep',    'rep': 'ANTONIO FERREIRA'},
+    'heygla':   {'senha': 'heygla@2026',     'perfil': 'rep',    'rep': 'HEYGLA SILVA'},
+}
+
+st.set_page_config(page_title='Simplifique Representações', page_icon='📋',
                    layout='wide', initial_sidebar_state='expanded')
- 
+
 st.markdown("""
 <style>
 div[data-testid="metric-container"] {
@@ -32,30 +47,30 @@ div[data-testid="metric-container"] label {
 .block-container { padding-top:1.5rem; padding-bottom:1rem; }
 </style>
 """, unsafe_allow_html=True)
- 
+
 # ─── FUNÇÕES AUXILIARES ───────────────────────────────────────────────────────
- 
+
 def limpar_nome(nome):
     if not nome: return ''
     import re
     return re.sub(r'^R\.?E\.?\s*[-–]\s*', '', nome, flags=re.IGNORECASE).strip()
- 
+
 def limpar_gerente(nome):
     if not nome: return ''
     import re
     return re.sub(r'^G\.?E\.?\s*[-–]\s*', '', nome, flags=re.IGNORECASE).strip()
- 
+
 def is_resolvido(status):
     return 'resolvido' in str(status).lower()
- 
+
 def is_prioridade(motivo):
     return MOTIVO_PRIO in str(motivo).lower()
- 
+
 def deve_excluir_prioridade(row):
     if row['Resolvido']: return True
     if str(row['PendenteCom']).strip().lower() == 'finalizado': return True
     return False
- 
+
 def parsear_data(s):
     if not s or str(s).strip() == '': return None
     try:
@@ -64,16 +79,16 @@ def parsear_data(s):
             return date(int(p[2]), int(p[1]), int(p[0]))
     except: pass
     return None
- 
+
 def is_pendente_rep_cliente(row):
     status_dpto = ('dpto. representante' in str(row['Status']).lower() or
                    'dpto representante' in str(row['Status']).lower())
     pend_cli_rep = str(row['PendenteCom']).strip().lower() in ['cliente', 'representante']
     return status_dpto or pend_cli_rep
- 
+
 def gerar_csv(df_show):
     return df_show.to_csv(index=False, sep=';', encoding='utf-8-sig')
- 
+
 def bar_chart_pct(df_plot, x_col, y_col, color, height=280):
     total = df_plot[x_col].sum() or 1
     df_plot = df_plot.copy()
@@ -85,7 +100,7 @@ def bar_chart_pct(df_plot, x_col, y_col, color, height=280):
     fig.update_layout(margin=dict(t=10,b=10,l=10,r=90), height=height,
                       yaxis_title='', xaxis_title='', showlegend=False)
     return fig
- 
+
 def gerar_excel_report(df_cli, df_pos, rep_nome):
     output = io.BytesIO()
     try:
@@ -131,9 +146,9 @@ def gerar_excel_report(df_cli, df_pos, rep_nome):
         output.write(gerar_csv(pd.concat([df_cli, df_pos], ignore_index=True)).encode('utf-8-sig'))
     output.seek(0)
     return output
- 
+
 # ─── CARGA DE DADOS ───────────────────────────────────────────────────────────
- 
+
 @st.cache_data(ttl=120)
 def verificar_ultima_atualizacao():
     """Consulta apenas a coluna U — leve, roda a cada 2 min"""
@@ -145,7 +160,7 @@ def verificar_ultima_atualizacao():
         return vals[-1] if vals else ''
     except:
         return ''
- 
+
 @st.cache_data(ttl=86400)
 def carregar_dados():
     url = f'https://sheets.googleapis.com/v4/spreadsheets/{PLANILHA_ID}/values/{ABA}!A:U?key={API_KEY}'
@@ -179,7 +194,43 @@ def carregar_dados():
         return df, None
     except Exception as e:
         return None, str(e)
- 
+
+# ─── TELA DE LOGIN ───────────────────────────────────────────────────────────
+def tela_login():
+    col1, col2, col3 = st.columns([1, 1.2, 1])
+    with col2:
+        st.markdown("""
+<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;
+            padding:36px 40px;box-shadow:0 4px 24px rgba(0,0,0,0.08);margin-top:60px">
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:36px">📋</div>
+    <div style="font-size:18px;font-weight:700;color:#1a2540;margin-top:6px">Simplifique Representações</div>
+    <div style="font-size:12px;color:#6b7a99;margin-top:4px">Pós-Vendas — Acesso restrito</div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+        with st.form('login_form'):
+            usuario = st.text_input('👤 Usuário', placeholder='seu usuário').strip().lower()
+            senha   = st.text_input('🔒 Senha',   placeholder='sua senha', type='password')
+            entrar  = st.form_submit_button('Entrar', use_container_width=True)
+            if entrar:
+                if usuario in USUARIOS and USUARIOS[usuario]['senha'] == senha:
+                    st.session_state.logado   = True
+                    st.session_state.usuario  = usuario
+                    st.session_state.perfil   = USUARIOS[usuario]['perfil']
+                    st.session_state.rep_fixo = USUARIOS[usuario]['rep']
+                    st.rerun()
+                else:
+                    st.error('Usuário ou senha incorretos.')
+
+# Verificar login
+if 'logado' not in st.session_state:
+    st.session_state.logado = False
+
+if not st.session_state.logado:
+    tela_login()
+    st.stop()
+
 # ─── SESSION STATE ────────────────────────────────────────────────────────────
 if 'filtros' not in st.session_state:
     st.session_state.filtros = {
@@ -187,10 +238,16 @@ if 'filtros' not in st.session_state:
         'pend':'Todos','mot':'Todos',
         'so_atraso':False,'so_prio':False,'dab1':None,'dab2':None
     }
- 
+
 # ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown('### 📋 Simplifique Representações')
+    st.caption('Pós-Vendas Supley')
+    perfil_atual = st.session_state.get('perfil','rep')
+    usuario_atual = st.session_state.get('usuario','')
+    rep_fixo = st.session_state.get('rep_fixo', None)
+    icone = '👑' if perfil_atual == 'admin' else '👤'
+    st.caption(f'{icone} **{usuario_atual.capitalize()}**')
     st.markdown('---')
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
@@ -210,8 +267,13 @@ with st.sidebar:
                 if key in st.session_state:
                     del st.session_state[key]
             st.rerun()
+    st.markdown('---')
+    if st.button('🚪 Sair', use_container_width=True):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
     st.markdown('### Filtros')
- 
+
 # ─── AUTO-DETECT mudança na planilha ─────────────────────────────────────────
 ult_check = verificar_ultima_atualizacao()
 if 'ultima_atu_check' not in st.session_state:
@@ -219,42 +281,56 @@ if 'ultima_atu_check' not in st.session_state:
 if ult_check and ult_check != st.session_state.ultima_atu_check:
     st.session_state.ultima_atu_check = ult_check
     carregar_dados.clear()
- 
+
 df_raw, erro = carregar_dados()
 if erro: st.error(f'❌ {erro}'); st.stop()
 if df_raw is None or df_raw.empty: st.warning('Nenhum dado.'); st.stop()
- 
+
 with st.sidebar:
-    reps_l   = ['Todos'] + sorted(df_raw['RepNome'].dropna().unique().tolist())
-    gers_l   = ['Todos'] + sorted(df_raw['GerNome'].dropna().unique().tolist())
-    status_l = ['Todos','Excluir Resolvidos'] + sorted(df_raw['Status'].dropna().unique().tolist())
-    pend_l   = ['Todos'] + sorted(df_raw['PendenteCom'].replace('',pd.NA).dropna().unique().tolist())
-    mot_l    = ['Todos'] + sorted(df_raw['Motivo'].replace('',pd.NA).dropna().unique().tolist())
- 
+    # Rep vê só seus dados — esconde filtros desnecessários
+    perfil_sidebar = st.session_state.get('perfil','rep')
+    if perfil_sidebar == 'rep':
+        rep_fixo_sb = st.session_state.get('rep_fixo','')
+        st.info(f'📊 Visualizando: **{rep_fixo_sb}**')
+        rep_sel = 'Todos'; ger_sel = 'Todos'; status_sel = 'Todos'
+        pend_sel = 'Todos'; mot_sel = 'Todos'
+        dab1 = None; dab2 = None; so_atraso = False; so_prio = False
+    else:
+        pass
     def idx(lst, val): return lst.index(val) if val in lst else 0
- 
-    rep_sel    = st.selectbox('Representante',    reps_l,   index=idx(reps_l,   st.session_state.filtros['rep']),    key='sb_rep')
-    ger_sel    = st.selectbox('Gerente Regional', gers_l,   index=idx(gers_l,   st.session_state.filtros['ger']),    key='sb_ger')
-    status_sel = st.selectbox('Status',           status_l, index=idx(status_l, st.session_state.filtros['status']), key='sb_status')
-    pend_sel   = st.selectbox('Pendente Com',     pend_l,   index=idx(pend_l,   st.session_state.filtros['pend']),   key='sb_pend')
-    mot_sel    = st.selectbox('Motivo',           mot_l,    index=idx(mot_l,    st.session_state.filtros['mot']),    key='sb_mot')
-    st.markdown('**Período de abertura**')
-    dab1 = st.date_input('De',  value=st.session_state.filtros.get('dab1'), format='DD/MM/YYYY', key='dab1_in')
-    dab2 = st.date_input('Até', value=st.session_state.filtros.get('dab2'), format='DD/MM/YYYY', key='dab2_in')
-    st.markdown('---')
-    so_atraso = st.checkbox('Somente em atraso (+7d)', value=st.session_state.filtros['so_atraso'], key='cb_atraso')
-    so_prio   = st.checkbox('Somente prioridades',     value=st.session_state.filtros['so_prio'],   key='cb_prio')
- 
-    st.session_state.filtros = {
-        'rep':rep_sel,'ger':ger_sel,'status':status_sel,'pend':pend_sel,'mot':mot_sel,
-        'so_atraso':so_atraso,'so_prio':so_prio,'dab1':dab1,'dab2':dab2
-    }
+
+    if perfil_sidebar == 'admin':
+        reps_l   = ['Todos'] + sorted(df_raw['RepNome'].dropna().unique().tolist())
+        gers_l   = ['Todos'] + sorted(df_raw['GerNome'].dropna().unique().tolist())
+        status_l = ['Todos','Excluir Resolvidos'] + sorted(df_raw['Status'].dropna().unique().tolist())
+        pend_l   = ['Todos'] + sorted(df_raw['PendenteCom'].replace('',pd.NA).dropna().unique().tolist())
+        mot_l    = ['Todos'] + sorted(df_raw['Motivo'].replace('',pd.NA).dropna().unique().tolist())
+
+        rep_sel    = st.selectbox('Representante',    reps_l,   index=idx(reps_l,   st.session_state.filtros['rep']),    key='sb_rep')
+        ger_sel    = st.selectbox('Gerente Regional', gers_l,   index=idx(gers_l,   st.session_state.filtros['ger']),    key='sb_ger')
+        status_sel = st.selectbox('Status',           status_l, index=idx(status_l, st.session_state.filtros['status']), key='sb_status')
+        pend_sel   = st.selectbox('Pendente Com',     pend_l,   index=idx(pend_l,   st.session_state.filtros['pend']),   key='sb_pend')
+        mot_sel    = st.selectbox('Motivo',           mot_l,    index=idx(mot_l,    st.session_state.filtros['mot']),    key='sb_mot')
+        st.markdown('**Período de abertura**')
+        dab1 = st.date_input('De',  value=st.session_state.filtros.get('dab1'), format='DD/MM/YYYY', key='dab1_in')
+        dab2 = st.date_input('Até', value=st.session_state.filtros.get('dab2'), format='DD/MM/YYYY', key='dab2_in')
+        st.markdown('---')
+        so_atraso = st.checkbox('Somente em atraso (+7d)', value=st.session_state.filtros['so_atraso'], key='cb_atraso')
+        so_prio   = st.checkbox('Somente prioridades',     value=st.session_state.filtros['so_prio'],   key='cb_prio')
+        st.session_state.filtros = {
+            'rep':rep_sel,'ger':ger_sel,'status':status_sel,'pend':pend_sel,'mot':mot_sel,
+            'so_atraso':so_atraso,'so_prio':so_prio,'dab1':dab1,'dab2':dab2
+        }
     st.markdown('---')
     st.caption(f'Total na planilha: **{len(df_raw)}** tickets')
- 
+
 # ─── APLICAR FILTROS ──────────────────────────────────────────────────────────
 df = df_raw.copy()
-if rep_sel    != 'Todos':              df = df[df['RepNome'] == rep_sel]
+# Se perfil rep, força filtro pelo representante fixo
+rep_fixo = st.session_state.get('rep_fixo', None)
+if rep_fixo:
+    df = df[df['Representante'].str.upper().str.contains(rep_fixo.upper(), na=False)]
+elif rep_sel != 'Todos':              df = df[df['RepNome'] == rep_sel]
 if ger_sel    != 'Todos':              df = df[df['GerNome'] == ger_sel]
 if status_sel == 'Excluir Resolvidos': df = df[~df['Resolvido']]
 elif status_sel != 'Todos':            df = df[df['Status'] == status_sel]
@@ -266,13 +342,13 @@ if dab1:
     df = df[df['DataAberturaDate'].apply(lambda d: d is not None and d >= dab1)]
 if dab2:
     df = df[df['DataAberturaDate'].apply(lambda d: d is not None and d <= dab2)]
- 
+
 # ─── HELPERS TABELA ───────────────────────────────────────────────────────────
 COLS_TABELA = ['Ticket','Titulo','RepNome','GerNome','DataAbertura','DiasAberto',
                'Status','Motivo','PendenteCom','Observacao','DataAtualizacao','URL','PrioAtiva']
 LABELS_TAB  = ['Ticket','Título','Representante','Gerente','Abertura','Dias',
                'Status','Motivo','Pendente Com','Observação','Últ. Atualiz.','Link','PrioAtiva']
- 
+
 def preparar_tabela(df_in):
     df_t = df_in[COLS_TABELA].copy()
     df_t.columns = LABELS_TAB
@@ -281,7 +357,7 @@ def preparar_tabela(df_in):
     ordem = ['🚨','Ticket','Título','Representante','Gerente','Abertura','Dias',
              'Status','Motivo','Pendente Com','Observação','Últ. Atualiz.','Link']
     return df_t[ordem]
- 
+
 def mostrar_tabela(df_t, key_suffix=''):
     st.dataframe(df_t.sort_values('Dias', ascending=False),
                  use_container_width=True, hide_index=True,
@@ -294,7 +370,7 @@ def mostrar_tabela(df_t, key_suffix=''):
     st.download_button('⬇️ Exportar CSV', data=csv,
                        file_name=f'export_{datetime.now().strftime("%d-%m-%Y")}_{key_suffix}.csv',
                        mime='text/csv', key=f'dl_{key_suffix}')
- 
+
 # ─── CABEÇALHO ────────────────────────────────────────────────────────────────
 col_tit, col_info = st.columns([3, 2])
 with col_tit:
@@ -310,13 +386,13 @@ with col_info:
         f'📅 Dados a partir de **08/05/2026** &nbsp;&nbsp;|&nbsp;&nbsp; '
         f'🔄 Última atualização: **{ult_atu or datetime.now().strftime("%d/%m/%Y %H:%M")}**'
     )
- 
+
 # ─── ABAS ─────────────────────────────────────────────────────────────────────
 aba1, aba2, aba3, aba4, aba5 = st.tabs([
     '📊 Visão Geral', '🔍 Análise Detalhada',
     '👤 Por Representante', '🚨 Prioridades', '📧 Report Semanal',
 ])
- 
+
 # ════════════════════════════════════════════════════════════════════════════════
 # ABA 1 — VISÃO GERAL
 # ════════════════════════════════════════════════════════════════════════════════
@@ -331,7 +407,7 @@ with aba1:
         df['Status'].str.strip().str.lower().str.contains('dpto representante', na=False)
     )
     mask_pend_cli = mask_dpto_rep | (df['PendenteCom'].str.strip().str.lower() == 'cliente')
- 
+
     total       = len(df)
     abertos     = int(mask_aberto.sum())
     resolvidos  = int(mask_resolvido.sum())
@@ -339,7 +415,7 @@ with aba1:
     prio_ativas = int((mask_aberto & df['Motivo'].apply(is_prioridade)).sum())
     pend_cli    = int((mask_aberto & mask_pend_cli).sum())
     pend_pos    = int((mask_aberto & ~mask_pend_cli).sum())
- 
+
     c1,c2,c3,c4,c5,c6,c7 = st.columns(7)
     c1.metric('📋 Total',           total)
     c2.metric('📂 Em Aberto',       abertos,     help='Excluídos: Resolvido e Finalizado')
@@ -351,9 +427,9 @@ with aba1:
     c6.metric('👤 Pend. Cliente',   pend_cli,    delta=f'-{pend_cli}'    if pend_cli    else None,
               delta_color='inverse', help='Status Dpto. Representante OU Pendente Com: Cliente')
     c7.metric('🏢 Pend. Pós-Venda', pend_pos,    help='Em aberto e não classificado como Pend. Cliente')
- 
+
     st.markdown('---')
- 
+
     col_a, col_b = st.columns(2)
     with col_a:
         st.markdown('### Tickets por Status')
@@ -364,7 +440,7 @@ with aba1:
         fig_st.update_traces(textinfo='label+percent', textposition='inside')
         fig_st.update_layout(showlegend=True, margin=dict(t=10,b=10,l=10,r=10), height=270)
         st.plotly_chart(fig_st, use_container_width=True)
- 
+
     with col_b:
         st.markdown('### Pendente Com')
         df_pend = df[df['PendenteCom']!='']['PendenteCom'].value_counts().reset_index()
@@ -374,14 +450,14 @@ with aba1:
             fig_pend = bar_chart_pct(df_pend, 'Qtd', 'Pendente Com', '#f59e0b', height=270)
             fig_pend.update_traces(marker_color=cores)
             st.plotly_chart(fig_pend, use_container_width=True)
- 
+
     col_c, col_d = st.columns(2)
     with col_c:
         st.markdown('### Abertos por Representante')
         df_rep = df[~df['Resolvido']].groupby('RepNome').size().reset_index(name='Abertos').sort_values('Abertos', ascending=True)
         if not df_rep.empty:
             st.plotly_chart(bar_chart_pct(df_rep,'Abertos','RepNome','#1a56db',height=320), use_container_width=True)
- 
+
     with col_d:
         st.markdown('### Atraso por Representante')
         df_at = df[df['Atrasado']].groupby('RepNome').size().reset_index(name='Atrasados').sort_values('Atrasados', ascending=True)
@@ -389,7 +465,7 @@ with aba1:
             st.info('Nenhum ticket em atraso.')
         else:
             st.plotly_chart(bar_chart_pct(df_at,'Atrasados','RepNome','#ef4444',height=320), use_container_width=True)
- 
+
     st.markdown('### KPIs por Representante')
     kpi = df.groupby('RepNome').agg(
         Total=('Ticket','count'),
@@ -402,7 +478,7 @@ with aba1:
         'RepNome':'Representante','PendCliente':'Pend. Cliente','PendPosVenda':'Pend. Pós-Venda'
     })
     st.dataframe(kpi.sort_values('Abertos', ascending=False), use_container_width=True, hide_index=True)
- 
+
 # ════════════════════════════════════════════════════════════════════════════════
 # ABA 2 — ANÁLISE DETALHADA
 # ════════════════════════════════════════════════════════════════════════════════
@@ -412,7 +488,7 @@ with aba2:
         busca = st.text_input('🔍 Buscar por ticket, título ou observação', placeholder='Ex: 10482 ou boleto...')
     with col_f2:
         ordenar = st.selectbox('Ordenar por', ['Dias (maior)','Dias (menor)','Ticket','Representante'])
- 
+
     df_det = df.copy()
     if busca:
         b = busca.lower()
@@ -425,7 +501,7 @@ with aba2:
                  'Ticket':('Ticket',True),'Representante':('RepNome',True)}
     col_ord, asc_ord = ord_map[ordenar]
     df_det = df_det.sort_values(by=col_ord, ascending=asc_ord)
- 
+
     m1,m2,m3,m4,m5 = st.columns(5)
     m1.metric('Filtrado',    len(df_det))
     m2.metric('Abertos',     int((~df_det['Resolvido']).sum()))
@@ -433,11 +509,11 @@ with aba2:
     m4.metric('Atraso',      int(df_det['Atrasado'].sum()))
     m5.metric('Prioridades', int(df_det['PrioAtiva'].sum()))
     st.markdown('---')
- 
+
     # Bloco 1 — Todos
     with st.expander(f'📋 Todos os tickets ({len(df_det)})', expanded=True):
         mostrar_tabela(preparar_tabela(df_det), 'todos')
- 
+
     # Bloco 2 — Prioridades
     df_det_prio = df_det[df_det['PrioAtiva']]
     with st.expander(f'🚨 Prioridades ({len(df_det_prio)})', expanded=True):
@@ -445,7 +521,7 @@ with aba2:
             st.success('Nenhuma prioridade ativa.')
         else:
             mostrar_tabela(preparar_tabela(df_det_prio), 'prio')
- 
+
     # Bloco 3 — Pendentes Rep/Cliente
     df_det_rc = df_det[df_det['PendRepCli'] & ~df_det['Resolvido']]
     with st.expander(f'👤 Pendentes com Representante / Cliente ({len(df_det_rc)})', expanded=True):
@@ -454,7 +530,7 @@ with aba2:
             st.success('Nenhum ticket nesta condição.')
         else:
             mostrar_tabela(preparar_tabela(df_det_rc), 'rep_cli')
- 
+
     # Bloco 4 — Resolvidos
     df_det_res = df_det[
         df_det['Status'].str.strip().str.lower().str.contains('resolvido', na=False) |
@@ -465,7 +541,7 @@ with aba2:
             st.success('Nenhum ticket resolvido.')
         else:
             mostrar_tabela(preparar_tabela(df_det_res), 'resolvidos')
- 
+
 # ════════════════════════════════════════════════════════════════════════════════
 # ABA 3 — POR REPRESENTANTE
 # ════════════════════════════════════════════════════════════════════════════════
@@ -477,7 +553,7 @@ with aba3:
         rep_escolhido = st.selectbox('Selecione o representante', reps_disp, key='rep3')
         df_r    = df[df['RepNome'] == rep_escolhido]
         ger_nome = df_r['GerNome'].iloc[0] if not df_r.empty else '—'
- 
+
         r1,r2,r3,r4,r5 = st.columns(5)
         r1.metric('📂 Abertos',       int((~df_r['Resolvido']).sum()))
         r2.metric('⏰ Atraso +7d',    int(df_r['Atrasado'].sum()))
@@ -486,7 +562,7 @@ with aba3:
         r5.metric('✅ Resolvidos',    int(df_r['Resolvido'].sum()))
         st.caption(f'Gerente Regional: **{ger_nome or "—"}**')
         st.markdown('---')
- 
+
         col_e, col_f = st.columns(2)
         with col_e:
             st.markdown('### Por Status')
@@ -502,7 +578,7 @@ with aba3:
             df_pend_r.columns = ['Pendente','Qtd']
             if not df_pend_r.empty:
                 st.plotly_chart(bar_chart_pct(df_pend_r,'Qtd','Pendente','#f59e0b',height=220), use_container_width=True)
- 
+
         df_pri_r = df_r[df_r['PrioAtiva']]
         if not df_pri_r.empty:
             st.markdown(f'#### 🚨 Prioridades em aberto ({len(df_pri_r)})')
@@ -512,23 +588,23 @@ with aba3:
                     f"📅 {row['DataAbertura']} · ⏰ {row['DiasAberto']} dias · Pend: {row['PendenteCom'] or '—'}  \n"
                     f"🔗 [{row['URL']}]({row['URL']})"
                 )
- 
+
         st.markdown('### Todos os tickets')
         mostrar_tabela(preparar_tabela(df_r), 'rep_todos')
- 
+
 # ════════════════════════════════════════════════════════════════════════════════
 # ABA 4 — PRIORIDADES
 # ════════════════════════════════════════════════════════════════════════════════
 with aba4:
     df_p = df[df['PrioAtiva']].copy()
- 
+
     p1,p2,p3,p4 = st.columns(4)
     p1.metric('🚨 Total prioridades', len(df_p))
     p2.metric('📂 Em aberto',         int((~df_p['Resolvido']).sum()))
     p3.metric('✅ Resolvidos',        int(df_p['Resolvido'].sum()))
     p4.metric('⏰ Atraso +7d',        int(df_p['Atrasado'].sum()))
     st.markdown('---')
- 
+
     with st.expander('📊 Gráficos', expanded=True):
         col_g, col_h = st.columns(2)
         with col_g:
@@ -541,17 +617,17 @@ with aba4:
             df_pg = df_p.groupby('GerNome').size().reset_index(name='Prioridades').sort_values('Prioridades', ascending=True)
             if not df_pg.empty:
                 st.plotly_chart(bar_chart_pct(df_pg,'Prioridades','GerNome','#ef4444',height=280), use_container_width=True)
- 
+
     with st.expander(f'📋 Tabela detalhada ({len(df_p)})', expanded=True):
         if df_p.empty:
             st.success('Nenhuma prioridade ativa.')
         else:
             mostrar_tabela(preparar_tabela(df_p), 'prio_det')
- 
+
     st.markdown('---')
     st.markdown('### 📱 Visão Resumida — Print / WhatsApp')
     hoje_fmt = datetime.now().strftime('%d/%m/%Y')
- 
+
     if df_p.empty:
         st.success('Nenhuma prioridade ativa no momento.')
     else:
@@ -574,7 +650,7 @@ with aba4:
                   <td style="padding:4px 8px;font-size:11px;color:#555;white-space:nowrap">{row['PendenteCom'] or '—'}</td>
                   <td style="padding:4px 8px;font-size:11px;color:#777">{str(row['Observacao'])[:35] if row['Observacao'] else '—'}</td>
                 </tr>'''
- 
+
         st.markdown(f'''
         <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:0;overflow:hidden;max-width:700px">
           <div style="background:#C0392B;color:#fff;padding:8px 12px;font-size:13px;font-weight:700">
@@ -594,7 +670,7 @@ with aba4:
           </table>
         </div>
         ''', unsafe_allow_html=True)
- 
+
         st.markdown(' ')
         with st.expander('📋 Copiar texto para WhatsApp'):
             texto_wpp = f"🚨 *PRIORIDADES EM ABERTO — {hoje_fmt}*\n\n"
@@ -605,7 +681,7 @@ with aba4:
                                   f"    ⏰ {row['DiasAberto']} dias | {row['PendenteCom'] or '—'}\n")
                 texto_wpp += "\n"
             st.code(texto_wpp, language=None)
- 
+
 # ════════════════════════════════════════════════════════════════════════════════
 # ABA 5 — REPORT SEMANAL
 # ════════════════════════════════════════════════════════════════════════════════
@@ -613,17 +689,17 @@ with aba5:
     st.markdown('### 📧 Report Semanal por Representante')
     reps_report = sorted(df_raw['RepNome'].dropna().unique().tolist())
     rep_report  = st.selectbox('Selecione o representante', reps_report, key='rep_report')
- 
+
     df_rep_base = df_raw[df_raw['RepNome'] == rep_report].copy()
     df_rep_ab   = df_rep_base[~df_rep_base['Resolvido']]
- 
+
     ab_r  = len(df_rep_ab)
     at_r  = int(df_rep_ab['Atrasado'].sum())
     pri_r = int(df_rep_ab['PrioAtiva'].sum())
     pc_r  = int((df_rep_ab['PendenteCom']=='Cliente').sum())
     ger_r = df_rep_base['GerNome'].iloc[0] if not df_rep_base.empty else '—'
     hoje  = datetime.now().strftime('%d/%m/%Y')
- 
+
     st.markdown(f"""
     <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:16px">
         <div style="font-size:15px;font-weight:700;color:#1a2540;margin-bottom:3px">
@@ -652,7 +728,7 @@ with aba5:
         </div>
     </div>
     """, unsafe_allow_html=True)
- 
+
     st.markdown('#### 📝 Texto do resumo (copie para o e-mail)')
     texto_resumo = (
         f"Boa tarde!\n\n"
@@ -668,7 +744,7 @@ with aba5:
     )
     st.code(texto_resumo, language=None)
     st.markdown('---')
- 
+
     # Seção 1 — Cliente
     df_cli_r = df_rep_ab[df_rep_ab['PendenteCom']=='Cliente'].sort_values('DiasAberto', ascending=False)
     st.markdown(f'#### 👤 Pós-vendas pendentes com o Cliente ({len(df_cli_r)})')
@@ -677,7 +753,7 @@ with aba5:
     else:
         mostrar_tabela(preparar_tabela(df_cli_r), 'report_cli')
     st.markdown('---')
- 
+
     # Seção 2 — Pós-venda/Comercial
     df_pos_r = df_rep_ab[
         df_rep_ab['PendenteCom'].str.strip().str.lower().str.contains('p.s-venda', na=False, regex=True)
@@ -688,7 +764,7 @@ with aba5:
     else:
         mostrar_tabela(preparar_tabela(df_pos_r), 'report_pos')
     st.markdown('---')
- 
+
     # Seção 3 — Outros
     mask_cli_r = df_rep_ab['PendenteCom'].str.strip().str.lower() == 'cliente'
     mask_pos_r = df_rep_ab['PendenteCom'].str.strip().str.lower().str.contains('p.s-venda', na=False, regex=True)
@@ -697,7 +773,7 @@ with aba5:
         st.markdown(f'#### 📋 Outros pendentes ({len(df_outros_r)})')
         mostrar_tabela(preparar_tabela(df_outros_r), 'report_outros')
         st.markdown('---')
- 
+
     # Exportar Excel
     st.markdown('#### ⬇️ Exportar Excel para anexar no e-mail')
     try:
@@ -709,13 +785,13 @@ with aba5:
         excel_data = io.BytesIO(gerar_csv(pd.concat([df_cli_r, df_pos_r], ignore_index=True)).encode('utf-8-sig'))
         ext  = 'csv'
         mime = 'text/csv'
- 
+
     st.download_button(
         label=f'📥 Baixar Report — {rep_report} — {hoje.replace("/","-")}.{ext}',
         data=excel_data,
         file_name=f'Report_{rep_report.replace(" ","_")}_{hoje.replace("/","-")}.{ext}',
         mime=mime, use_container_width=True
     )
- 
+
 st.markdown('---')
 st.caption('Simplifique Representações · Dados via Google Sheets')
