@@ -12,7 +12,7 @@ import io
 from datetime import datetime, date
 
 PLANILHA_ID = '1zRgd4x0Th67MYywSVWrE4W8R_3dK1Y7k4em_8YxrBMo'
-API_KEY     = 'st.secrets["GOOGLE_API_KEY"]'
+API_KEY     = st.secrets["GOOGLE_API_KEY"]
 ABA         = 'TICKETS'
 DIAS_ATRASO = 7
 MOTIVO_PRIO = 'prorrogação de boleto'
