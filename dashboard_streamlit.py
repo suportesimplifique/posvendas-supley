@@ -381,7 +381,7 @@ with col_info:
         if not vals.empty:
             ult_atu = vals.iloc[-1]
     st.caption(
-        f'📅 Dados a partir de **08/05/2026** &nbsp;&nbsp;|&nbsp;&nbsp; '
+        f'📅 Dados resolvidos a partir de **08/05/2026** &nbsp;&nbsp;|&nbsp;&nbsp; '
         f'🔄 Última atualização: **{ult_atu or datetime.now().strftime("%d/%m/%Y %H:%M")}**'
     )
 
