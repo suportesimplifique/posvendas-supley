@@ -242,7 +242,6 @@ if 'filtros' not in st.session_state:
 # ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown('### 📋 Simplifique Representações')
-    st.caption('Pós-Vendas Supley')
     perfil_atual = st.session_state.get('perfil','rep')
     usuario_atual = st.session_state.get('usuario','')
     rep_fixo = st.session_state.get('rep_fixo', None)
@@ -388,10 +387,18 @@ with col_info:
     )
 
 # ─── ABAS ─────────────────────────────────────────────────────────────────────
-aba1, aba2, aba3, aba4, aba5 = st.tabs([
-    '📊 Visão Geral', '🔍 Análise Detalhada',
-    '👤 Por Representante', '🚨 Prioridades', '📧 Report Semanal',
-])
+perfil_tabs = st.session_state.get('perfil', 'rep')
+if perfil_tabs == 'admin':
+    aba1, aba2, aba3, aba4, aba5 = st.tabs([
+        '📊 Visão Geral', '🔍 Análise Detalhada',
+        '👤 Por Representante', '🚨 Prioridades', '📧 Report Semanal',
+    ])
+else:
+    aba1, aba2, aba3, aba4 = st.tabs([
+        '📊 Visão Geral', '🔍 Análise Detalhada',
+        '👤 Por Representante', '🚨 Prioridades',
+    ])
+    aba5 = None
 
 # ════════════════════════════════════════════════════════════════════════════════
 # ABA 1 — VISÃO GERAL
@@ -683,115 +690,116 @@ with aba4:
             st.code(texto_wpp, language=None)
 
 # ════════════════════════════════════════════════════════════════════════════════
-# ABA 5 — REPORT SEMANAL
+# ABA 5 — REPORT SEMANAL (apenas admin)
 # ════════════════════════════════════════════════════════════════════════════════
-with aba5:
-    st.markdown('### 📧 Report Semanal por Representante')
-    reps_report = sorted(df_raw['RepNome'].dropna().unique().tolist())
-    rep_report  = st.selectbox('Selecione o representante', reps_report, key='rep_report')
+if aba5 is not None:
+  with aba5:
+     st.markdown('### 📧 Report Semanal por Representante')
+     reps_report = sorted(df_raw['RepNome'].dropna().unique().tolist())
+     rep_report  = st.selectbox('Selecione o representante', reps_report, key='rep_report')
 
-    df_rep_base = df_raw[df_raw['RepNome'] == rep_report].copy()
-    df_rep_ab   = df_rep_base[~df_rep_base['Resolvido']]
+     df_rep_base = df_raw[df_raw['RepNome'] == rep_report].copy()
+     df_rep_ab   = df_rep_base[~df_rep_base['Resolvido']]
 
-    ab_r  = len(df_rep_ab)
-    at_r  = int(df_rep_ab['Atrasado'].sum())
-    pri_r = int(df_rep_ab['PrioAtiva'].sum())
-    pc_r  = int((df_rep_ab['PendenteCom']=='Cliente').sum())
-    ger_r = df_rep_base['GerNome'].iloc[0] if not df_rep_base.empty else '—'
-    hoje  = datetime.now().strftime('%d/%m/%Y')
+     ab_r  = len(df_rep_ab)
+     at_r  = int(df_rep_ab['Atrasado'].sum())
+     pri_r = int(df_rep_ab['PrioAtiva'].sum())
+     pc_r  = int((df_rep_ab['PendenteCom']=='Cliente').sum())
+     ger_r = df_rep_base['GerNome'].iloc[0] if not df_rep_base.empty else '—'
+     hoje  = datetime.now().strftime('%d/%m/%Y')
 
-    st.markdown(f"""
-    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:16px">
-        <div style="font-size:15px;font-weight:700;color:#1a2540;margin-bottom:3px">
-            REPORT SEMANAL — PÓS-VENDAS PENDENTES REP. {rep_report.upper()}
-        </div>
-        <div style="font-size:11px;color:#6b7a99;margin-bottom:12px">
-            Gerente: {ger_r or '—'} &nbsp;·&nbsp; Atualização: {hoje}
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <div style="border:1px solid #fed7aa;border-radius:6px;padding:8px 16px;text-align:center">
-                <div style="font-size:9px;color:#ea580c;text-transform:uppercase;font-weight:600">Abertos</div>
-                <div style="font-size:26px;font-weight:700;color:#ea580c">{ab_r}</div>
-            </div>
-            <div style="border:1px solid #fecaca;border-radius:6px;padding:8px 16px;text-align:center">
-                <div style="font-size:9px;color:#dc2626;text-transform:uppercase;font-weight:600">Atraso</div>
-                <div style="font-size:26px;font-weight:700;color:#dc2626">{at_r}</div>
-            </div>
-            <div style="border:1px solid #e9d5ff;border-radius:6px;padding:8px 16px;text-align:center">
-                <div style="font-size:9px;color:#7e22ce;text-transform:uppercase;font-weight:600">Prioridades</div>
-                <div style="font-size:26px;font-weight:700;color:#7e22ce">{pri_r}</div>
-            </div>
-            <div style="border:1px solid #a5f3fc;border-radius:6px;padding:8px 16px;text-align:center">
-                <div style="font-size:9px;color:#0891b2;text-transform:uppercase;font-weight:600">Pend. Cliente</div>
-                <div style="font-size:26px;font-weight:700;color:#0891b2">{pc_r}</div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+     st.markdown(f"""
+     <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:16px">
+         <div style="font-size:15px;font-weight:700;color:#1a2540;margin-bottom:3px">
+             REPORT SEMANAL — PÓS-VENDAS PENDENTES REP. {rep_report.upper()}
+         </div>
+         <div style="font-size:11px;color:#6b7a99;margin-bottom:12px">
+             Gerente: {ger_r or '—'} &nbsp;·&nbsp; Atualização: {hoje}
+         </div>
+         <div style="display:flex;gap:10px;flex-wrap:wrap">
+             <div style="border:1px solid #fed7aa;border-radius:6px;padding:8px 16px;text-align:center">
+                 <div style="font-size:9px;color:#ea580c;text-transform:uppercase;font-weight:600">Abertos</div>
+                 <div style="font-size:26px;font-weight:700;color:#ea580c">{ab_r}</div>
+             </div>
+             <div style="border:1px solid #fecaca;border-radius:6px;padding:8px 16px;text-align:center">
+                 <div style="font-size:9px;color:#dc2626;text-transform:uppercase;font-weight:600">Atraso</div>
+                 <div style="font-size:26px;font-weight:700;color:#dc2626">{at_r}</div>
+             </div>
+             <div style="border:1px solid #e9d5ff;border-radius:6px;padding:8px 16px;text-align:center">
+                 <div style="font-size:9px;color:#7e22ce;text-transform:uppercase;font-weight:600">Prioridades</div>
+                 <div style="font-size:26px;font-weight:700;color:#7e22ce">{pri_r}</div>
+             </div>
+             <div style="border:1px solid #a5f3fc;border-radius:6px;padding:8px 16px;text-align:center">
+                 <div style="font-size:9px;color:#0891b2;text-transform:uppercase;font-weight:600">Pend. Cliente</div>
+                 <div style="font-size:26px;font-weight:700;color:#0891b2">{pc_r}</div>
+             </div>
+         </div>
+     </div>
+     """, unsafe_allow_html=True)
 
-    st.markdown('#### 📝 Texto do resumo (copie para o e-mail)')
-    texto_resumo = (
-        f"Boa tarde!\n\n"
-        f"@{rep_report},\n"
-        f"Segue o status report dos pós-vendas em aberto pendentes de resolução.\n"
-        f"Em anexo, segue o detalhamento dos tickets + observações e, abaixo, o resumo para acompanhamento:\n\n"
-        f"Resumo dos pós-vendas em aberto:\n"
-        f"Data da atualização: {hoje}\n\n"
-        f"• {ab_r} tickets com pós-vendas em aberto;\n"
-        f"• {at_r} tickets atrasados, considerando tickets com mais de 7 dias em aberto;\n"
-        f"• {pri_r} tickets prioritários, referente às solicitações de prorrogação de boletos;\n"
-        f"• {pc_r} tickets pendentes com o cliente, por gentileza, verificar."
-    )
-    st.code(texto_resumo, language=None)
-    st.markdown('---')
+     st.markdown('#### 📝 Texto do resumo (copie para o e-mail)')
+     texto_resumo = (
+         f"Boa tarde!\n\n"
+         f"@{rep_report},\n"
+         f"Segue o status report dos pós-vendas em aberto pendentes de resolução.\n"
+         f"Em anexo, segue o detalhamento dos tickets + observações e, abaixo, o resumo para acompanhamento:\n\n"
+         f"Resumo dos pós-vendas em aberto:\n"
+         f"Data da atualização: {hoje}\n\n"
+         f"• {ab_r} tickets com pós-vendas em aberto;\n"
+         f"• {at_r} tickets atrasados, considerando tickets com mais de 7 dias em aberto;\n"
+         f"• {pri_r} tickets prioritários, referente às solicitações de prorrogação de boletos;\n"
+         f"• {pc_r} tickets pendentes com o cliente, por gentileza, verificar."
+     )
+     st.code(texto_resumo, language=None)
+     st.markdown('---')
 
-    # Seção 1 — Cliente
-    df_cli_r = df_rep_ab[df_rep_ab['PendenteCom']=='Cliente'].sort_values('DiasAberto', ascending=False)
-    st.markdown(f'#### 👤 Pós-vendas pendentes com o Cliente ({len(df_cli_r)})')
-    if df_cli_r.empty:
-        st.success('Nenhum ticket pendente com o cliente.')
-    else:
-        mostrar_tabela(preparar_tabela(df_cli_r), 'report_cli')
-    st.markdown('---')
+     # Seção 1 — Cliente
+     df_cli_r = df_rep_ab[df_rep_ab['PendenteCom']=='Cliente'].sort_values('DiasAberto', ascending=False)
+     st.markdown(f'#### 👤 Pós-vendas pendentes com o Cliente ({len(df_cli_r)})')
+     if df_cli_r.empty:
+         st.success('Nenhum ticket pendente com o cliente.')
+     else:
+         mostrar_tabela(preparar_tabela(df_cli_r), 'report_cli')
+     st.markdown('---')
 
-    # Seção 2 — Pós-venda/Comercial
-    df_pos_r = df_rep_ab[
-        df_rep_ab['PendenteCom'].str.strip().str.lower().str.contains('p.s-venda', na=False, regex=True)
-    ].sort_values('DiasAberto', ascending=False)
-    st.markdown(f'#### 🏢 Pós-vendas pendentes com Pós-venda/Comercial ({len(df_pos_r)})')
-    if df_pos_r.empty:
-        st.success('Nenhum ticket pendente com Pós-venda/Comercial.')
-    else:
-        mostrar_tabela(preparar_tabela(df_pos_r), 'report_pos')
-    st.markdown('---')
+     # Seção 2 — Pós-venda/Comercial
+     df_pos_r = df_rep_ab[
+         df_rep_ab['PendenteCom'].str.strip().str.lower().str.contains('p.s-venda', na=False, regex=True)
+     ].sort_values('DiasAberto', ascending=False)
+     st.markdown(f'#### 🏢 Pós-vendas pendentes com Pós-venda/Comercial ({len(df_pos_r)})')
+     if df_pos_r.empty:
+         st.success('Nenhum ticket pendente com Pós-venda/Comercial.')
+     else:
+         mostrar_tabela(preparar_tabela(df_pos_r), 'report_pos')
+     st.markdown('---')
 
-    # Seção 3 — Outros
-    mask_cli_r = df_rep_ab['PendenteCom'].str.strip().str.lower() == 'cliente'
-    mask_pos_r = df_rep_ab['PendenteCom'].str.strip().str.lower().str.contains('p.s-venda', na=False, regex=True)
-    df_outros_r = df_rep_ab[~mask_cli_r & ~mask_pos_r].sort_values('DiasAberto', ascending=False)
-    if not df_outros_r.empty:
-        st.markdown(f'#### 📋 Outros pendentes ({len(df_outros_r)})')
-        mostrar_tabela(preparar_tabela(df_outros_r), 'report_outros')
-        st.markdown('---')
+     # Seção 3 — Outros
+     mask_cli_r = df_rep_ab['PendenteCom'].str.strip().str.lower() == 'cliente'
+     mask_pos_r = df_rep_ab['PendenteCom'].str.strip().str.lower().str.contains('p.s-venda', na=False, regex=True)
+     df_outros_r = df_rep_ab[~mask_cli_r & ~mask_pos_r].sort_values('DiasAberto', ascending=False)
+     if not df_outros_r.empty:
+         st.markdown(f'#### 📋 Outros pendentes ({len(df_outros_r)})')
+         mostrar_tabela(preparar_tabela(df_outros_r), 'report_outros')
+         st.markdown('---')
 
-    # Exportar Excel
-    st.markdown('#### ⬇️ Exportar Excel para anexar no e-mail')
-    try:
-        import xlsxwriter
-        excel_data = gerar_excel_report(df_cli_r, df_pos_r, rep_report)
-        ext  = 'xlsx'
-        mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    except ImportError:
-        excel_data = io.BytesIO(gerar_csv(pd.concat([df_cli_r, df_pos_r], ignore_index=True)).encode('utf-8-sig'))
-        ext  = 'csv'
-        mime = 'text/csv'
+     # Exportar Excel
+     st.markdown('#### ⬇️ Exportar Excel para anexar no e-mail')
+     try:
+         import xlsxwriter
+         excel_data = gerar_excel_report(df_cli_r, df_pos_r, rep_report)
+         ext  = 'xlsx'
+         mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+     except ImportError:
+         excel_data = io.BytesIO(gerar_csv(pd.concat([df_cli_r, df_pos_r], ignore_index=True)).encode('utf-8-sig'))
+         ext  = 'csv'
+         mime = 'text/csv'
 
-    st.download_button(
-        label=f'📥 Baixar Report — {rep_report} — {hoje.replace("/","-")}.{ext}',
-        data=excel_data,
-        file_name=f'Report_{rep_report.replace(" ","_")}_{hoje.replace("/","-")}.{ext}',
-        mime=mime, use_container_width=True
-    )
+     st.download_button(
+         label=f'📥 Baixar Report — {rep_report} — {hoje.replace("/","-")}.{ext}',
+         data=excel_data,
+         file_name=f'Report_{rep_report.replace(" ","_")}_{hoje.replace("/","-")}.{ext}',
+         mime=mime, use_container_width=True
+     )
 
 st.markdown('---')
 st.caption('Simplifique Representações · Dados via Google Sheets')
